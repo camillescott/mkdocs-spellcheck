@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from logging import Logger
+import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -31,3 +33,18 @@ class Backend(ABC):
             word: The word to check.
         """
         raise NotImplementedError
+
+
+def _get_mispell_contexts(page: str, word: str, max_ctx=29):
+    #phrase_re = re.compile(re.escape(word), re.IGNORECASE)
+    phrase_re = re.compile(r"\b" + re.escape(word) + r"\b", re.IGNORECASE)
+    for line_num, line in enumerate(page.split('\n'), start=1):
+        line = line.strip()
+        for match in phrase_re.finditer(line):
+            line_num_token = f'{line_num}: '
+            match_start, match_end = match.span()
+            ctx_left = min(max_ctx, match_start)
+            underline_start = ctx_left + len(line_num_token)
+            underline = " " * underline_start + "^" * (match_end - match_start)
+            context = line.strip()[match_start-ctx_left:match_end+max_ctx]
+            yield f"{line_num_token}{context}\n{underline}"

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from mkdocs.plugins import get_plugin_logger
 
-from mkdocs_spellcheck._internal.backends import Backend
+from mkdocs_spellcheck._internal.backends import Backend, _get_mispell_contexts
 
 if TYPE_CHECKING:
     from mkdocs.structure.pages import Page
@@ -77,4 +77,5 @@ else:
             if word in self.misspellings:
                 # reason = self.misspellings[word].reason
                 fixword = fix_case(word, self.misspellings[word].data)
-                _logger.warning(f"(codespell) {page.file.src_path}: Misspelled '{word}', did you mean '{fixword}'?")
+                context = '\n'.join(_get_mispell_contexts(page.file.content_string, word))
+                _logger.warning(f"(codespell) {page.file.src_path}: Misspelled '{word}', did you mean '{fixword}'?\n\n{context}\n")

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from mkdocs.plugins import get_plugin_logger
 
-from mkdocs_spellcheck._internal.backends import Backend
+from mkdocs_spellcheck._internal.backends import Backend, _get_mispell_contexts
 
 if TYPE_CHECKING:
     from mkdocs.structure.pages import Page
@@ -61,11 +61,12 @@ else:
         def check(self, page: Page, word: str) -> None:
             """Check a word against the `symspellpy` dictionary."""
             suggestions = self.spell.lookup(word, Verbosity.CLOSEST, max_edit_distance=2)
+            context = '\n'.join(_get_mispell_contexts(page.file.content_string, word))
             if suggestions:
                 candidates = "', '".join(suggestion.term for suggestion in suggestions if suggestion.term != word)
                 if candidates:
                     _logger.warning(
-                        f"(symspellpy) {page.file.src_path}: Misspelled '{word}', did you mean '{candidates}'?",
+                        f"(symspellpy) {page.file.src_path}: Misspelled '{word}', did you mean '{candidates}'?\n\n{context}\n",
                     )
             else:
-                _logger.warning(f"(symspellpy) {page.file.src_path}: Misspelled '{word}', no suggestions")
+                _logger.warning(f"(symspellpy) {page.file.src_path}: Misspelled '{word}', no suggestions\n\n{context}\n")

@@ -8,6 +8,9 @@ from functools import partial
 from html.parser import HTMLParser
 from io import StringIO
 
+from mkdocs.plugins import get_plugin_logger
+
+_logger = get_plugin_logger(__name__)
 
 class _MLStripper(HTMLParser):
     def __init__(self, ignore_code: bool = True) -> None:  # noqa: FBT001,FBT002
