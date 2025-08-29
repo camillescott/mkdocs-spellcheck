@@ -21,14 +21,21 @@ class _MLStripper(HTMLParser):
         self.text = StringIO()
         self.ignore_code = ignore_code
         self.in_code_tag = False
+        self.in_math_tag = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:  # noqa: ARG002
         if tag == "code":
             self.in_code_tag = True
+        if is_math_tag(tag, attrs):
+            self.in_code_tag = True
+            self.in_math_tag = True
         self.text.write(" ")
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "code":
+            self.in_code_tag = False
+        if tag == "span" and self.in_math_tag:
+            self.in_math_tag = False
             self.in_code_tag = False
 
     def handle_data(self, data: str) -> None:
@@ -39,7 +46,18 @@ class _MLStripper(HTMLParser):
         return self.text.getvalue()
 
 
+def is_math_tag(tag: str, attrs: list[tuple[str, str | None]]) -> bool:
+    return tag == "span" and dict(attrs).get("class", None) == "arithmatex"
+
+
+def _remove_urls(text):
+    # Matches http://, https://, www., or mailto: followed by non-whitespace
+    url_pattern = r"http[s]?://\S+|www\.|mailto:\S+"
+    return re.sub(url_pattern, "", text)
+
+
 def _strip_tags(html: str, ignore_code: bool) -> str:  # noqa: FBT001
+    html = _remove_urls(html)
     stripper = _MLStripper(ignore_code)
     stripper.feed(html)
     return stripper.get_data()
