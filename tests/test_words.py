@@ -27,6 +27,43 @@ def test_remove_single_tags() -> None:
     assert "img" not in words
 
 
+def test_remove_guarded_blocks() -> None:
+    """Assert guarded text blocks are removed from HTML text."""
+    html = """\
+before
+<!-- mkdocs-spellcheck-off -->
+between
+<!-- mkdocs-spellcheck-on -->
+after
+"""
+    words = get_words(html, min_length=1)
+    assert "before" in words
+    assert "between" not in words
+    assert "after" in words
+
+
+@pytest.mark.parametrize(
+    ("ignore_code", "expected"),
+    [
+        (True, {"before", "after"}),
+        (False, {"before", "some", "guarded", "text", "after"}),
+    ],
+)
+def test_guarded_blocks_disabled_in_code_blocks(ignore_code: bool, expected: set[str]) -> None:
+    """Assert guarded blocks are disabled in code blocks."""
+    html = """\
+before
+<code>
+<!-- mkdocs-spellcheck-off -->
+some guarded text
+<!-- mkdocs-spellcheck-on -->
+</code>
+after
+"""
+    words = get_words(html, ignore_code=ignore_code)
+    assert set(words) == expected
+
+
 @pytest.mark.parametrize(
     ("text", "known_words", "expected"),
     [
@@ -113,3 +150,22 @@ def test_reset_after_code_endtag() -> None:
     """Assert the HTML stripper correctly resets its state after finding a `</code>` end tag."""
     html = "<p>Some</p><code>code</code><p>snippet</p>"
     assert "snippet" in get_words(html, ignore_code=True)
+
+
+@pytest.mark.parametrize(
+    ("ignore_code", "expected_absent", "expected_present"),
+    [
+        (True, {"script", "sh", "code"}, set()),
+        (False, set(), {"script", "sh", "code"}),
+    ],
+)
+def test_ignore_entity_encoded_code_tags_in_title(
+    ignore_code: bool,
+    expected_absent: set[str],
+    expected_present: set[str],
+) -> None:
+    """Assert entity-encoded code tags (e.g. from code block titles) are handled."""
+    html = '<span class="filename">&lt;code&gt;script.sh&lt;/code&gt;</span><p>hello</p>'
+    words = get_words(html, min_length=1, ignore_code=ignore_code)
+    assert expected_absent.isdisjoint(words)
+    assert expected_present.issubset(words)
